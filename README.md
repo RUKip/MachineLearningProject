@@ -1,4 +1,4 @@
-# Comparing PPA and CALCA machine learning algorithm
+# Comparing PPO and CACLA machine learning algorithm
 
 ## Installation
 
