@@ -20,5 +20,6 @@ https://www.cs.ubc.ca/~gberseth/blog/demystifying-the-many-deep-reinforcement-le
 SPG https://arxiv.org/abs/1809.05763
 CACLA https://hadovanhasselt.files.wordpress.com/2015/12/reinforcement_learning_in_continuous_action_spaces.pdf
 CACLA http://www.ai.rug.nl/~mwiering/GROUP/ARTICLES/CACLA_Discrete_Problems.pdf
+KERAS https://keras.io/#getting-started-30-seconds-to-keras
+CARTPOLE https://keon.io/deep-q-learning/#Replay
 ```
-
