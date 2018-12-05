@@ -1,7 +1,6 @@
 import gym
-env = gym.make("BipedalWalker-v2")
-observation = env.reset()
+env = gym.make('BipedalWalker-v2')
+env.reset()
 for _ in range(1000):
-  env.render()
-  action = env.action_space.sample() # your agent here (this takes random actions)
-  observation, reward, done, info = env.step(action)
+    env.render()
+    env.step(env.action_space.sample()) # take a random action
