@@ -1,6 +1,7 @@
 import random
 import gym
 import numpy as np
+from scipy import integrate
 from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
@@ -9,6 +10,8 @@ import sys
 
 
 EPISODES = 10000
+FPS = 50
+dt = 1/FPS
 
 
 class CACLACritic:
@@ -21,8 +24,8 @@ class CACLACritic:
 
     def _build_model(self):  # Neural Net for CACLA learning Model - critic
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(400, activation='relu'))
         model.add(Dense(1, activation='linear'))  # Returns the Value for best policy
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
@@ -44,16 +47,15 @@ class CACLAActor:
         self.action_size = action_size
         self.sigma = 1.0
         self.sigma_min = 0.01
-        self.sigma_decay = 0.9995
-        # self.sigma_decay = 0.999
-        self.gamma = 0.95    # discount rate
+        # self.sigma_decay = 0.9995
+        self.sigma_decay = 0.999
         self.learning_rate = 0.001
         self.model = self._build_model()
 
     def _build_model(self):  # Neural Net for CACLA learning Model - actor
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(400, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss='mse',
                       optimizer=Adam(lr=self.learning_rate))
@@ -106,20 +108,31 @@ if __name__ == "__main__":
     for e in range(EPISODES):
         state = env.reset()
         state = np.reshape(state, [1, state_size])
+        # Initialize the X position after reset. We will use this to calculate reward
+        posX = 0.0
+        velX_array = []
         done = False
+
         while not done:
-            # if e > 200:
-            #     env.render()
+            # if e > 2000:
+            env.render()
             action = actor.act(state)
             next_state, reward, done, _ = env.step(action)
 
+            velX_array.append(state[0][2])
+
+            posX = integrate.trapz(velX_array, dx=dt)
+            posRewardFactor = 10.0
+
+            reward += posRewardFactor*posX
+
             # TODO: WHAT IF WE INTEGRATE THE VEL TO GET POS AND THEN REWARD BASED ON HOW FAR WE MOVED
-            x_vel = state[0][2]
-            r_X_vel = X_vel_offset
-            # r_X_vel = X_vel_offset + actor.sigma*100.0
-            if x_vel > 0:
-                reward += r_X_vel*x_vel
-            # print('vel x = {}, reward = {}'.format(x_vel, reward))
+            # x_vel = state[0][2]
+            # r_X_vel = X_vel_offset
+            # # r_X_vel = X_vel_offset + actor.sigma*100.0
+            # if x_vel > 0:
+            #     reward += r_X_vel*x_vel
+            # # print('vel x = {}, reward = {}'.format(x_vel, reward))
 
             next_state = np.reshape(next_state, [1, state_size])
             actor.learn(state, action, critic.model.predict(state), critic.model.predict(next_state))
@@ -128,9 +141,10 @@ if __name__ == "__main__":
             state = next_state
             if done:
                 print("episode: {}/{}, reward: {}, sigma: {:.2}" .format(e, EPISODES, reward, actor.sigma))
+                print(" posX: {}, rewardposX: {}" .format(posX, posRewardFactor*posX))
                 if actor.sigma > actor.sigma_min:
                    actor.sigma *= actor.sigma_decay
-
-    actor.save(actor_filename)
-    critic.save(critic_filename)
+        if e > 2000:
+            actor.save(actor_filename)
+            critic.save(critic_filename)
 
