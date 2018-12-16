@@ -20,14 +20,14 @@ class CACLACritic:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.gamma = 0.95  # Discount rate
-        self.learning_rate = 0.001
+        self.gamma = 0.99  # Discount rate
+        self.learning_rate = 0.01
         self.model = self._build_model()
 
     def _build_model(self):  # Neural Net for CACLA learning Model - critic
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
         model.add(Dense(1, activation='linear'))  # Returns the Value for best policy
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
@@ -51,30 +51,30 @@ class CACLAActor:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.sigma = 0.5
-        self.sigma_min = 0.01
+        self.sigma = 0.7
+        self.sigma_min = 0.2
         self.sigma_decay = 0.999
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         self.model = self._build_model()
 
     def _build_model(self):  # Neural Net for CACLA learning Model - actor
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
         model.add(Dense(self.action_size, activation='tanh'))
         model.compile(loss='mse',
                       optimizer=Adam(lr=self.learning_rate))
         return model
 
     def act(self, state):
-        act_values = self.model.predict(state)
+        act_values = self.model.predict(state)[0]
         actions = []  # Actions to perform using a Gaussian exploration method
         actions = act_values + np.random.normal(0, self.sigma, size=env.action_space.shape[0])
         actions = actions.clip(env.action_space.low, env.action_space.high)
         #for val in act_values[0]:
             #actions.append(np.random.normal(0, self.sigma, size=env.action_space.shape[0]))
             #actions.append(np.random.normal(val, self.sigma))
-        return np.array(actions[0])
+        return np.array(actions)
 
     def learn(self, state, action, tempDiffErr):
         if tempDiffErr > 0:
@@ -127,15 +127,23 @@ if __name__ == "__main__":
         totalReward = 0
         while not done:
             #env.render()
-            if e > 400:
+            if e > 500:
     	        env.render()
             action = actor.act(state)
             next_state, reward, done, _ = env.step(action)
 
             velX_array.append(state[0][2])
-            posX = integrate.trapz(velX_array, dx=dt)
+            posX = env.env.hull.position.x
+            
+            #TODO: extra reward stuff, prob not needed
+            #posX = integrate.trapz(velX_array, dx=dt)
             #posXRewardFactor = 100.0
             #reward += posXRewardFactor*posX
+            #if(posX>0.3 and x_vel > 0):
+            #   reward += x_vel
+
+            #if(done and posX<0.3):
+            #   reward += -30
 
             # TODO: WHAT IF WE INTEGRATE THE VEL TO GET POS AND THEN REWARD BASED ON HOW FAR WE MOVED
             x_vel = state[0][2]
@@ -166,8 +174,8 @@ if __name__ == "__main__":
                 actor.save(actor_filename)
                 critic.save(critic_filename)
                 
-                logging.debug("episode: {}/{}, reward: {}, sigma: {:.2}, posX: {}, velX: {}, totalreward: {}"
-                              .format(e, EPISODES, reward, actor.sigma, posX, x_vel, totalReward))
+                logging.debug("episode: {}/{}, sigma: {:.2}, posX: {}, velX: {}, totalreward: {}"
+                              .format(e, EPISODES, actor.sigma, posX, x_vel, totalReward))
                 if reward > 100:
                     logging.warning("Hallelujah! reward: {}".format(reward))
                 if actor.sigma > actor.sigma_min:
