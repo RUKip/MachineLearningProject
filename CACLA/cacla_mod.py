@@ -19,26 +19,26 @@ class CACLA:
         self.state_size = state_size
         self.action_size = action_size
         self.gamma = 0.99  # Discount rate
-        self.learning_rate = 0.001
-        # self.learning_rate = 0.5
+        # self.learning_rate = 0.001
+        self.learning_rate = 0.2
         self.critic_model = self._build_critic_model()
         self.actor_model = self._build_actor_model()
         self.sigma = 0.5
         self.sigma_min = 0.1
-        self.sigma_decay = 0.99
+        self.sigma_decay = 0.999
 
     def _build_critic_model(self):
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
         model.add(Dense(1, activation='linear'))  # Returns the Value for best policy
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
 
     def _build_actor_model(self):
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(100, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
         model.add(Dense(self.action_size, activation='tanh'))
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
@@ -55,8 +55,8 @@ class CACLA:
         return actions[0]
 
     def getTDE(self, state, reward, next_state):
-        target = reward + self.gamma*self.critic_model.predict(next_state)
-        return target - self.critic_model.predict(state)
+        target = reward + self.gamma*self.critic_model.predict(next_state) - self.critic_model.predict(state)
+        return target
 
     def learn(self, replay_buff, batch_size, n_iter):
         for i in range(n_iter):
@@ -70,7 +70,7 @@ class CACLA:
                     break
                 elif tempDiffErr > 0:
                     state_arr.append(state[0])
-                    target = action
+                    target = action - self.actor_model.predict(state)
                     target_arr.append(target[0])
             target_arr = np.array(target_arr)
             state_arr = np.array(state_arr)
@@ -79,8 +79,9 @@ class CACLA:
 
             # CRITIC training
             state, action, reward, tempDiffErr, next_state, done = replay_buff.sample(batch_size)
+            state = np.reshape(state, [batch_size, self.state_size])
             next_state = np.reshape(next_state, [batch_size, self.state_size])
-            target_critic = np.reshape(reward, [len(reward), 1]) + self.gamma*self.critic_model.predict(next_state)
+            target_critic = np.reshape(reward, [len(reward), 1]) + self.gamma*self.critic_model.predict(next_state) - self.critic_model.predict(state)
             state = np.reshape(state, [batch_size, self.state_size])
 
             self.critic_model.fit(state, target_critic, batch_size=batch_size, epochs=1, verbose=0)
@@ -158,7 +159,7 @@ if __name__ == "__main__":
                 else:
                     CACLA_model.sigma = CACLA_model.sigma_min
                 if CACLA_model.learning_rate > 0.001:
-                    CACLA_model.learning_rate *= 0.99
+                    CACLA_model.learning_rate *= 0.95
                 else:
                     CACLA_model.learning_rate = 0.001
 
