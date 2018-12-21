@@ -78,6 +78,7 @@ class CACLA:
                 self.actor_model.fit(state_arr, target_arr, batch_size=batch_size, epochs=1, verbose=0)
 
             # CRITIC training
+            batch = replay_buff.sample(batch_size)
             state, action, reward, tempDiffErr, next_state, done = replay_buff.sample(batch_size)
             next_state = np.reshape(next_state, [batch_size, self.state_size])
             target_critic = np.reshape(reward, [len(reward), 1]) + self.gamma*self.critic_model.predict(next_state)
@@ -124,7 +125,7 @@ if __name__ == "__main__":
         finishLine = False
 
         for t in range(MAX_TIMESTEPS):
-            env.render()
+            # env.render()
 
             action = CACLA_model.act(state, env.action_space.shape[0], env.action_space.low, env.action_space.high)
             next_state, reward, done, _ = env.step(action)
