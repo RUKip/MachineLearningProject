@@ -126,6 +126,8 @@ if __name__ == "__main__":
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
     model = spgModel(state_size, action_size, env.action_space.low, env.action_space.high)
+    stateRMS = utils.obsRunningMeanStd()
+    stateRMS.setSize(state_size)
 
     critic_filename = "BipedalWalker-critic.h5"
     actor_filename = "BipedalWalker-actor.h5"
@@ -151,15 +153,21 @@ if __name__ == "__main__":
     avg_reward = 0
     ep_reward = 0
 
+    state_vector = []
+
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         # if e % 2 == 0:  # buffer size 2*EPISODES
         model.replay_buffer.clear()
         finishLine = False
         for t in range(MAX_TIMESTEPS):
-            # env.render()
+            env.render()
+            state_vector.append(state[0])
+            stateRMS.update(state, state_size)
+
             actions = model.exploration(np.reshape(state, (1, state_size)), action_size)
             next_state, reward, done, _ = env.step(actions)
+
             posX = env.env.hull.position.x
             x_vel = state[2]
             finishLine = ((reward > 200.0) or (posX > 100))
