@@ -1,0 +1,5 @@
+**/.idea
+**/myenv
+**/.vscode
+*.pyc
+*.log
