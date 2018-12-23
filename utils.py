@@ -74,16 +74,14 @@ class RunningMeanStd:
         else:
             return self.mean, variance
 
-class obsRunningMeanStd:
-    def __init__(self):
-        self.obsRMS = []
-        self.state_size = 0
 
-    def setSize(self, size=0):
-        for i in range(size):
+class obsRunningMeanStd:
+    def __init__(self, size=0):
+        self.obsRMS = []
+        self.state_size = size
+        for i in range(self.state_size):
             rms = RunningMeanStd()
             self.obsRMS.append(rms)
-            self.state_size += 1
 
     def getSize(self):
         return len(self.obsRMS)
@@ -93,11 +91,31 @@ class obsRunningMeanStd:
             self.obsRMS[i].update(state_arr[i])
 
     def getMeanStd(self):
-        meanVar = []
+        mean_var = []
         for i in range(self.state_size):
-            meanVar.append(self.obsRMS[i].getMeanVar())
-        return meanVar
+            mean_var.append(self.obsRMS[i].getMeanVar())
+        return mean_var
 
+def normalize(X, obsRMS):
+    if obsRMS is None:
+        return X
+    mean_var = obsRMS.getMeanStd()
+    normVal = []
+    for i, x in enumerate(X):
+        norm_val = (x - mean_var[i][0]) / mean_var[i][1]
+        normVal.append(norm_val)
+    return normVal
+
+
+def denormalize(X, obsRMS):
+    if obsRMS is None:
+        return X
+    mean_var = obsRMS.getMeanStd()
+    denomVal = []
+    for i, x in enumerate(X):
+        denorm_val = x * mean_var[i][1] + mean_var[i][0]
+        denomVal.append(denorm_val)
+    return denomVal
 
 
 def print_hyperparam(paramList, hyperparams):
