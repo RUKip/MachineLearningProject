@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 import sys
 import progressbar
 import logging
-from CACLA.utils import ReplayBuffer
+from utils import ReplayBuffer
 
 EPISODES = 5000
 MAX_TIMESTEPS = 2000
@@ -20,11 +20,12 @@ class CACLA:
         self.action_size = action_size
         self.gamma = 0.99  # Discount rate
         # self.learning_rate = 0.001
-        self.learning_rate = 0.2
+        self.learning_rate = 0.001
+        # self.learning_rate = 0.2
         self.critic_model = self._build_critic_model()
         self.actor_model = self._build_actor_model()
-        self.sigma = 0.5
-        self.sigma_min = 0.1
+        self.sigma = 0.7
+        self.sigma_min = 0.2
         self.sigma_decay = 0.999
 
     def _build_critic_model(self):
@@ -121,11 +122,13 @@ if __name__ == "__main__":
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         state = np.reshape(state, [1, state_size])
-
+                   
         finishLine = False
 
         for t in range(MAX_TIMESTEPS):
-            env.render()
+            if(e>200):
+                env.render()
+            #env.render()
 
             action = CACLA_model.act(state, env.action_space.shape[0], env.action_space.low, env.action_space.high)
             next_state, reward, done, _ = env.step(action)
@@ -140,8 +143,11 @@ if __name__ == "__main__":
             next_state = np.reshape(next_state, [1, state_size])
             action = np.reshape(action, [1, action_size])
 
+            n_state = state / np.linalg.norm(state)
+            n_next_state = next_state / np.linalg.norm(next_state)
+
             tempDiffErr = CACLA_model.getTDE(state, reward, next_state)
-            replay_buffer.add((state, action, reward, tempDiffErr, next_state, done))
+            replay_buffer.add((n_state, action, reward, tempDiffErr, n_next_state, done))
             state = next_state
 
             avg_reward += reward
@@ -149,8 +155,8 @@ if __name__ == "__main__":
 
             if done or (t == (MAX_TIMESTEPS-1)):
                 CACLA_model.learn(replay_buffer, batch_size, n_iter)
-                logging.debug("episode: {}/{}, reward: {}, ep_reward: {}, avg_reward: {}, sigma: {:.2}, l_rate: {:.2}, "
-                              "posX: {:.2}, velX: {:.2}".format(e, EPISODES, reward, ep_reward, avg_reward,
+                logging.debug("episode: {}/{}, ep_reward: {}, sigma: {:.2}, l_rate: {:.2}, "
+                              "posX: {:.2}, velX: {:.2}".format(e, EPISODES, ep_reward,
                                                                 CACLA_model.sigma, CACLA_model.learning_rate,
                                                                 posX, x_vel))
 
@@ -159,7 +165,7 @@ if __name__ == "__main__":
                 else:
                     CACLA_model.sigma = CACLA_model.sigma_min
                 if CACLA_model.learning_rate > 0.001:
-                    CACLA_model.learning_rate *= 0.95
+                    CACLA_model.learning_rate *= 0.99
                 else:
                     CACLA_model.learning_rate = 0.001
 

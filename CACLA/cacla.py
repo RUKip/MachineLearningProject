@@ -112,8 +112,8 @@ if __name__ == "__main__":
         critic_filename = sys.argv[4]
     logging.info("Starting exercise: actor_filename: {}, critic_filename: {}, sigmadecay: {}, xvel: {}".format(actor_filename, critic_filename, actor.sigma_decay, X_vel_offset))
 
-    #actor.load(actor_filename)
-    #critic.load(critic_filename)
+    actor.load(actor_filename)
+    critic.load(critic_filename)
             
     batch = []
     for e in progressbar.progressbar(range(EPISODES)):
@@ -127,8 +127,8 @@ if __name__ == "__main__":
         totalReward = 0
         while not done:
             #env.render()
-            if e > 500:
-    	        env.render()
+            #if e > 500:
+    	    #    env.render()
             action = actor.act(state)
             next_state, reward, done, _ = env.step(action)
 
@@ -171,8 +171,8 @@ if __name__ == "__main__":
                     critic.learn(stateB, rewardB, next_stateB)
                     
                 batch = []
-                actor.save(actor_filename)
-                critic.save(critic_filename)
+                #actor.save(actor_filename)
+                #critic.save(critic_filename)
                 
                 logging.debug("episode: {}/{}, sigma: {:.2}, posX: {}, velX: {}, totalreward: {}"
                               .format(e, EPISODES, actor.sigma, posX, x_vel, totalReward))
