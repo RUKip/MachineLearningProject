@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 
 class Buffer:
     def __init__(self):
@@ -59,6 +59,9 @@ class RunningMeanStd:
         self.mean = mean
         self.M2 = M2
 
+    def __len__(self):
+        return self.count
+
     def update(self, newValue):
         self.count += 1
         delta = newValue - self.mean
@@ -69,10 +72,10 @@ class RunningMeanStd:
     # retrieve the mean, variance and sample variance from an aggregate
     def getMeanVar(self):
         (self.mean, variance) = (self.mean, self.M2/self.count)
-        if self.count < 2:
-            return float('nan')
-        else:
-            return self.mean, variance
+        # if self.count < 2: # TODO: esto es necesario?? asi me ahorro limitarlo en el codigo..
+        #     return float('nan')
+        # else:
+        return self.mean, variance
 
 
 class obsRunningMeanStd:
@@ -82,6 +85,9 @@ class obsRunningMeanStd:
         for i in range(self.state_size):
             rms = RunningMeanStd()
             self.obsRMS.append(rms)
+
+    def __len__(self):
+        return len(self.obsRMS)
 
     def getSize(self):
         return len(self.obsRMS)
@@ -102,7 +108,10 @@ def normalize(X, obsRMS):
     mean_var = obsRMS.getMeanStd()
     normVal = []
     for i, x in enumerate(X):
-        norm_val = (x - mean_var[i][0]) / mean_var[i][1]
+        if mean_var[i][1] == 0:  # if variance equals 0
+            norm_val = x
+        else:
+            norm_val = (x - mean_var[i][0]) / mean_var[i][1]
         normVal.append(norm_val)
     return normVal
 

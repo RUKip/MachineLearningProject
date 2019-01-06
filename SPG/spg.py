@@ -1,13 +1,11 @@
-import random
 import gym
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam, SGD
+from keras.optimizers import SGD
 import progressbar
 import logging
-import utils
-
+from utils import utils
 
 EPISODES = 10000
 MAX_TIMESTEPS = 1600  # It is 2000 for hardcore..
