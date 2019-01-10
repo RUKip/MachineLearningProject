@@ -28,7 +28,7 @@ class spgModel:
         self.learning_rate_decay = 0.0
         self.sigma = 1.0
         self.sigma_min = 0.1
-        self.sigma_decay = 0.999
+        self.sigma_decay = 0.9995
         self.batch_size = 32
         self.n_iter = 100
         self.n_sampled_actions = 3
