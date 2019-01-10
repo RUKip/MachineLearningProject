@@ -10,6 +10,7 @@ import sys
 import progressbar
 import logging
 import utils
+import matplotlib.pyplot as plt
 
 EPISODES = 10000
 
@@ -67,6 +68,7 @@ class CACLAmodel:
     def train_actor(self, state, action, tempDiffErr):
         state = np.reshape(state, (1, self.state_size))
         action = np.reshape(action, (1, self.action_size))
+        target = action    
         if tempDiffErr > 0:
             target = action
             self.actor_model.fit(state, target, epochs=1, verbose=0)
@@ -96,20 +98,24 @@ if __name__ == "__main__":
     action_size = env.action_space.shape[0]
     model = CACLAmodel(state_size, action_size, env.action_space.low, env.action_space.high)
 
-    actor_filename = "BipedalWalker-actor.h5"
-    critic_filename = "BipedalWalker-critic.h5"
+    actor_filename = "BipedalWalker-actorV2.h5"
+    critic_filename = "BipedalWalker-criticV2.h5"
 
     # model.load(critic_filename, actor_filename)
+
+    all_the_tempDiffs = []
 
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         # Initialize the X position after reset. We will use this to calculate reward
         posX = 0.0
         done = False
+        
+        total_epoch_reward = 0
 
         while not done:
-            # if e > 2000:
-            env.render()
+            if e > 100:
+                env.render()
 
             # Updating running mean and deviation for the state vector.
             model.stateRMS.update(state, state_size)
@@ -130,12 +136,19 @@ if __name__ == "__main__":
             model.train_critic(norm_state, reward, norm_next_state)
             state = next_state
 
+            all_the_tempDiffs.append(tempDiffErr[0][0])
+            total_epoch_reward += reward
+
             if done:
-                logging.debug("episode: {}/{}, reward: {}, sigma: {:.2}, posX: {}, velX: {}"
-                              .format(e, EPISODES, reward, model.sigma, posX, x_vel))
+                logging.debug("episode: {}/{}, epoch_reward: {}, sigma: {:.2}, posX: {}, velX: {}"
+                              .format(e, EPISODES, total_epoch_reward, model.sigma, posX, x_vel))
                 if reward > 200:
                     logging.warning("Hallelujah! reward: {}".format(reward))
                 if model.sigma > model.sigma_min:
                     model.sigma *= model.sigma_decay
 
         model.save(critic_filename, actor_filename)
+        if (e % 500 == 0):
+            plt.plot(all_the_tempDiffs)
+            plt.ylabel('Tempdiffs over time')
+            plt.show()
