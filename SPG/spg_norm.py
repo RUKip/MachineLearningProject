@@ -6,7 +6,7 @@ from keras.optimizers import SGD
 import progressbar
 import logging
 import utils
-from utils import utils
+#from utils import utils
 
 
 EPISODES = 10000
