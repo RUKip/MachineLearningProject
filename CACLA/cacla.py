@@ -80,7 +80,7 @@ class CACLAmodel:
                 st1 = np.reshape(utils.normalize(next_state[i], self.stateRMS), (1, self.state_size))
                 rt = reward[i]
                 if done[i]:
-                    target = rt
+                    target = np.reshape(rt, (1, 1))
                 else:
                     target = rt + self.gamma * self.critic_model.predict(st1)
                 self.critic_model.fit(st, target, epochs=1, verbose=0)
