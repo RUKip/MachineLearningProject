@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+
 class Buffer:
     def __init__(self):
         self.buffer = []
@@ -102,6 +103,7 @@ class obsRunningMeanStd:
             mean_var.append(self.obsRMS[i].getMeanVar())
         return mean_var
 
+
 def normalize(X, obsRMS):
     if obsRMS is None:
         return X
@@ -113,6 +115,22 @@ def normalize(X, obsRMS):
         else:
             norm_val = (x - mean_var[i][0]) / mean_var[i][1]
         normVal.append(norm_val)
+    return normVal
+
+
+def normalize_batch(X, obsRMS):
+    if obsRMS is None:
+        return X
+    mean_var = obsRMS.getMeanStd()
+    normVal = []
+    for i, x in enumerate(X):
+        for j, val in enumerate(x):
+            if mean_var[j][1] == 0:
+                norm_val = val
+            else:
+                norm_val = (val - mean_var[j][0]) / mean_var[j][1]
+            normVal.append(norm_val)
+    normVal = np.reshape(normVal, (len(X), len(x)))
     return normVal
 
 
