@@ -79,7 +79,10 @@ class CACLAmodel:
                 st = np.reshape(utils.normalize(state[i], self.stateRMS), (1, self.state_size))
                 st1 = np.reshape(utils.normalize(next_state[i], self.stateRMS), (1, self.state_size))
                 rt = reward[i]
-                target = rt + self.gamma * self.critic_model.predict(st1)
+                if done[i]:
+                    target = rt
+                else:
+                    target = rt + self.gamma * self.critic_model.predict(st1)
                 self.critic_model.fit(st, target, epochs=1, verbose=0)
 
     def train_actor(self):
@@ -90,13 +93,16 @@ class CACLAmodel:
                 st1 = np.reshape(utils.normalize(next_state[i], self.stateRMS), (1, self.state_size))
                 at = np.reshape(action[i], (1, self.action_size))
                 rt = reward[i]
-                tempDiffErr = self.getTDE(st, st1, rt)
+                tempDiffErr = self.getTDE(st, st1, rt, done[i])
                 if tempDiffErr > 0:
                     target = at
                     self.actor_model.fit(st, target, epochs=1, verbose=0)
 
-    def getTDE(self, state, next_state, reward):
-        target = reward + self.gamma * self.critic_model.predict(next_state)
+    def getTDE(self, state, next_state, reward, done):
+        if done:
+            target = reward
+        else:
+            target = reward + self.gamma * self.critic_model.predict(next_state)
         return target - self.critic_model.predict(state)
 
     def load(self, critic_filename, actor_filename):
