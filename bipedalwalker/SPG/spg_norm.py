@@ -1,12 +1,12 @@
-import random
 import gym
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam, SGD
+from keras.optimizers import SGD
 import progressbar
 import logging
 import utils
+#from utils import utils
 
 
 EPISODES = 10000
@@ -20,6 +20,7 @@ class spgModel:
         self.replay_buffer = utils.Memory()
         self.action_space_low = action_min
         self.action_space_high = action_max
+        self.stateRMS = utils.obsRunningMeanStd(state_size)
         # HyperParams
         self.gamma = 0.99  # Discount rate
         self.critic_lr = 1e-3
@@ -27,7 +28,7 @@ class spgModel:
         self.learning_rate_decay = 0.0
         self.sigma = 1.0
         self.sigma_min = 0.1
-        self.sigma_decay = 0.999
+        self.sigma_decay = 0.9995
         self.batch_size = 32
         self.n_iter = 100
         self.n_sampled_actions = 3
@@ -73,11 +74,13 @@ class spgModel:
         return actions[0]
 
     def train_critic(self):
-        # TODO: if it ever works, go back to training in batches
         for _ in range(self.n_iter):
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
             for i in range(self.batch_size):
-                st, rt, st1 = np.reshape(state[i], (1, self.state_size)), reward[i], np.reshape(next_state[i], (1, self.state_size))
+                # st, rt, st1 = np.reshape(state[i], (1, self.state_size)), reward[i], np.reshape(next_state[i], (1, self.state_size))
+                st = np.reshape(utils.normalize(state[i], self.stateRMS), (1, self.state_size))
+                st1 = np.reshape(utils.normalize(next_state[i], self.stateRMS), (1, self.state_size))
+                rt = reward[i]
                 pi_st = self.actor_model.predict(st)
                 pi_st1 = self.actor_model.predict(st1)
                 st_pit = np.hstack((st, pi_st))
@@ -85,11 +88,12 @@ class spgModel:
                 self.critic_model.fit(st_pit, target_critic, epochs=1, verbose=0)
 
     def train_actor(self):
-        # TODO: if it ever works, go back to training in batches
         for _ in range(self.n_iter):
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
             for i in range(self.batch_size):
-                s, a = np.reshape(state[i], (1, self.state_size)), np.reshape(action[i], (1, self.action_size))
+                # s, a = np.reshape(state[i], (1, self.state_size)), np.reshape(action[i], (1, self.action_size))
+                s = np.reshape(utils.normalize(state[i], self.stateRMS), (1, self.state_size))
+                a = np.reshape(action[i], (1, self.action_size))
                 pi_s = self.actor_model.predict(s)
                 best = pi_s
                 if self.get_Q(s, a) > self.get_Q(s, pi_s):
@@ -126,9 +130,6 @@ if __name__ == "__main__":
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
     model = spgModel(state_size, action_size, env.action_space.low, env.action_space.high)
-    stateRMS = utils.obsRunningMeanStd()
-    stateRMS.setSize(state_size)
-
     critic_filename = "BipedalWalker-critic.h5"
     actor_filename = "BipedalWalker-actor.h5"
 
@@ -153,8 +154,6 @@ if __name__ == "__main__":
     avg_reward = 0
     ep_reward = 0
 
-    state_vector = []
-
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         # if e % 2 == 0:  # buffer size 2*EPISODES
@@ -162,26 +161,35 @@ if __name__ == "__main__":
         finishLine = False
         for t in range(MAX_TIMESTEPS):
             env.render()
-            state_vector.append(state[0])
-            stateRMS.update(state, state_size)
 
-            actions = model.exploration(np.reshape(state, (1, state_size)), action_size)
+            # Updating running mean and deviation for the state vector.
+            model.stateRMS.update(state, state_size)
+
+            # Performing an action.
+            norm_state = utils.normalize(state, model.stateRMS)
+            actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
             next_state, reward, done, _ = env.step(actions)
 
+            # Measurements of progress.
             posX = env.env.hull.position.x
             x_vel = state[2]
             finishLine = ((reward > 200.0) or (posX > 100))
             if finishLine:
                 logging.warning("Hallelujah! reward: {}, posX: {}".format(reward, posX))
 
+            # Save values to buffer
             model.replay_buffer.append(state, actions, reward, next_state, done)
             state = next_state
+
             avg_reward += reward
             ep_reward += reward
 
             if done:
+                # Train model.
                 model.train_actor()
                 model.train_critic()
+
+                # Output variables to log.
                 paramList = ["latest_r",
                              "ep_reward",
                              "avg_reward",
@@ -192,6 +200,7 @@ if __name__ == "__main__":
                 msg = utils.print_episode(paramList, params)
                 logging.debug(msg)
 
+                # Sigma decay.
                 if model.sigma > model.sigma_min:
                     model.sigma *= model.sigma_decay
                 else:
