@@ -1,50 +1,38 @@
 import numpy as np
+from collections import deque
 import math
-
-class Buffer:
-    def __init__(self):
-        self.buffer = []
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def append(self, v):
-        self.buffer.append(v)
-
-    def get_batch(self, idxs):
-        return np.asarray(self.buffer)[idxs]
 
 
 class Memory:
-    def __init__(self):
-        self.states = Buffer()
-        self.actions = Buffer()
-        self.rewards = Buffer()
-        self.next_states = Buffer()
-        self.done = Buffer()
+    def __init__(self, max_len=2000):
+        self.states = deque(maxlen=max_len)
+        self.actions = deque(maxlen=max_len)
+        self.rewards = deque(maxlen=max_len)
+        self.next_states = deque(maxlen=max_len)
+        self.done = deque(maxlen=max_len)
 
-    def append(self, state, action, reward, next_state, done):
+    def remember(self, state, action, reward, next_state, done):
         self.states.append(state)
         self.actions.append(action)
         self.rewards.append(reward)
         self.next_states.append(next_state)
         self.done.append(done)
 
-    def sample(self, batch_size):
-        indexes = np.random.randint(0, len(self.states.buffer), size=batch_size)
-        state_batch = self.states.get_batch(indexes)
-        action_batch = self.actions.get_batch(indexes)
-        reward_batch = self.rewards.get_batch(indexes)
-        nex_state_batch = self.next_states.get_batch(indexes)
-        done_batch = self.done.get_batch(indexes)
+    def sample(self, batch_size=32):
+        indexes = np.random.randint(0, len(self.states), size=batch_size)
+        state_batch = np.asarray(self.states)[indexes]
+        action_batch = np.asarray(self.actions)[indexes]
+        reward_batch = np.asarray(self.rewards)[indexes]
+        nex_state_batch = np.asarray(self.next_states)[indexes]
+        done_batch = np.asarray(self.done)[indexes]
         return state_batch, action_batch, reward_batch, nex_state_batch, done_batch
 
     def clear(self):
-        self.states.buffer.clear()
-        self.actions.buffer.clear()
-        self.rewards.buffer.clear()
-        self.next_states.buffer.clear()
-        self.done.buffer.clear()
+        self.states.clear()
+        self.actions.clear()
+        self.rewards.clear()
+        self.next_states.clear()
+        self.done.clear()
 
 
 class RunningMeanStd:
@@ -77,7 +65,6 @@ class RunningMeanStd:
         # else:
         return self.mean, variance
 
-
 class obsRunningMeanStd:
     def __init__(self, size=0):
         self.obsRMS = []
@@ -102,6 +89,11 @@ class obsRunningMeanStd:
             mean_var.append(self.obsRMS[i].getMeanVar())
         return mean_var
 
+    def print(self):
+        print("RunningMeanStd:")
+        print(np.asarray(self.getMeanStd()))
+
+
 def normalize(X, obsRMS):
     if obsRMS is None:
         return X
@@ -113,6 +105,22 @@ def normalize(X, obsRMS):
         else:
             norm_val = (x - mean_var[i][0]) / mean_var[i][1]
         normVal.append(norm_val)
+    return normVal
+
+
+def normalize_batch(X, obsRMS):
+    if obsRMS is None:
+        return X
+    mean_var = obsRMS.getMeanStd()
+    normVal = []
+    for i, x in enumerate(X):
+        for j, val in enumerate(x):
+            if mean_var[j][1] == 0:
+                norm_val = val
+            else:
+                norm_val = (val - mean_var[j][0]) / mean_var[j][1]
+            normVal.append(norm_val)
+    normVal = np.reshape(normVal, (len(X), len(x)))
     return normVal
 
 

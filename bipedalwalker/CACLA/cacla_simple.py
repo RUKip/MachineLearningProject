@@ -9,7 +9,7 @@ from keras.optimizers import Adam
 import sys
 import progressbar
 import logging
-import utils
+from bipedalwalker.utils import utils
 import matplotlib.pyplot as plt
 
 EPISODES = 10000

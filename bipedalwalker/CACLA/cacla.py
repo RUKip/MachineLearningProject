@@ -5,7 +5,7 @@ from scipy import integrate
 from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam
+from keras.optimizers import SGD
 import sys
 import progressbar
 import logging
@@ -25,14 +25,17 @@ class CACLAmodel:
         self.stateRMS = utils.obsRunningMeanStd(state_size)
         # HyperParams
         self.gamma = 0.99  # Discount rate
-        self.actor_lr = 1e-4
-        self.critic_lr = 1e-3
-        self.learning_rate_decay = 0.0
+        # self.critic_lr = 1e-3
+        # self.actor_lr = 1e-4
+        self.critic_lr = 0.1
+        self.actor_lr = 0.1
+        self.critic_lr_decay = 1e-06
+        self.actor_lr_decay = 1e-06
         self.sigma = 1.0
         self.sigma_min = 0.1
         self.sigma_decay = 0.999
         self.batch_size = 32
-        self.n_iter = 100
+        self.n_iter = 100*4
         # Build NN
         self.critic_model = self._build_critic_model()
         self.actor_model = self._build_actor_model()
@@ -41,7 +44,8 @@ class CACLAmodel:
         params = (self.gamma,
                   self.critic_lr,
                   self.actor_lr,
-                  self.learning_rate_decay,
+                  self.critic_lr_decay,
+                  self.actor_lr_decay,
                   self.sigma,
                   self.sigma_min,
                   self.sigma_decay,
@@ -51,18 +55,18 @@ class CACLAmodel:
 
     def _build_critic_model(self):  # Neural Net for CACLA learning Model - critic
         model = Sequential()
-        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(300, activation='relu'))
+        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
         model.add(Dense(1, activation='linear'))  # Returns the Value for best policy
-        model.compile(loss='mse', optimizer=Adam(lr=self.critic_lr))
+        sgd = SGD(lr=self.critic_lr, momentum=0.8, decay=self.critic_lr_decay)
+        model.compile(loss='mse', optimizer=sgd)
         return model
 
     def _build_actor_model(self):  # Neural Net for CACLA learning Model - actor
         model = Sequential()
-        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(300, activation='relu'))
+        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
         model.add(Dense(self.action_size, activation='tanh'))
-        model.compile(loss='mse', optimizer=Adam(lr=self.actor_lr))
+        sgd = SGD(lr=self.actor_lr, momentum=0.8, decay=self.actor_lr_decay)
+        model.compile(loss='mse', optimizer=sgd)
         return model
 
     def exploration(self, state, action_space):  # SPG-OffGE - offline Gaussian exploration
@@ -128,7 +132,8 @@ if __name__ == "__main__":
     paramList = ["gamma",
                  "critic_lr",
                  "actor_lr",
-                 "learning_rate_decay",
+                 "critic_lr_decay",
+                 "actor_lr_decay",
                  "sigma",
                  "sigma_min",
                  "sigma_decay",
@@ -146,10 +151,11 @@ if __name__ == "__main__":
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         # Initialize the X position after reset. We will use this to calculate reward
-        model.replay_buffer.clear()
+        if e % 4 == 0:
+            model.replay_buffer.clear()
         finishLine = False
         for t in range(MAX_TIMESTEPS):
-            env.render()
+            # env.render()
 
             # Updating running mean and deviation for the state vector.
             model.stateRMS.update(state, state_size)
