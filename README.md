@@ -3,14 +3,17 @@
 ## Installation
 
 ```
-pip3 install gym
-pip3 install box2d-py
+python3 -m venv myenv
+source myenv/bin/activate
+pip install -r requirements.txt
 ```
 
 ## Running
-
+Source virtual environment, and export the PATH to our module. 
 ```
-python3 environment.py
+source myenv/bin/activate
+export PYTHONPATH="$PYTHONPATH:/path_to_repo/bipedalwalker"
+python cacla_final.py
 ```
 
 ## Useful Links
