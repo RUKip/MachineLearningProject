@@ -111,16 +111,15 @@ def normalize(X, obsRMS):
 def normalize_batch(X, obsRMS):
     if obsRMS is None:
         return X
-    mean_var = obsRMS.getMeanStd()
-    normVal = []
+    mean_var = np.asarray(obsRMS.getMeanStd())
+    normVal = np.zeros((len(X), len(mean_var)))
     for i, x in enumerate(X):
         for j, val in enumerate(x):
             if mean_var[j][1] == 0:
                 norm_val = val
             else:
                 norm_val = (val - mean_var[j][0]) / mean_var[j][1]
-            normVal.append(norm_val)
-    normVal = np.reshape(normVal, (len(X), len(x)))
+            normVal[i][j] = norm_val
     return normVal
 
 
@@ -133,6 +132,35 @@ def denormalize(X, obsRMS):
         denorm_val = x * mean_var[i][1] + mean_var[i][0]
         denomVal.append(denorm_val)
     return denomVal
+
+
+class newNormalizer:
+    def __init__(self, size=0):
+        self.maxValues = np.zeros((1, size))
+        self.minValues = np.zeros((1, size))
+
+    def setMinMax(self, state):
+        self.maxValues = np.copy(state)
+        self.minValues = np.copy(state)
+
+    def update(self, values):
+        compMax = np.greater(values, self.maxValues)
+        idxMax = np.where(compMax==True)
+        np.put(self.maxValues, idxMax, values[idxMax])
+        compMin = np.less(values, self.minValues)
+        idxMin = np.where(compMin==True)
+        np.put(self.minValues, idxMin, values[idxMin])
+
+    def normalize(self, values):
+        normVal = 2*(values - self.minValues) / (self.maxValues - self.minValues) - 1
+        return normVal
+
+    def normalize_batch(self, X):
+        normVal = np.zeros(np.shape(X))
+        for i, values in enumerate(X):
+            aux = 2*(values - self.minValues) / (self.maxValues - self.minValues) - 1
+            normVal[i] = aux
+        return normVal
 
 
 def print_hyperparam(paramList, hyperparams):
