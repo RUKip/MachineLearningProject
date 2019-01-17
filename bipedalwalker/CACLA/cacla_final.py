@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 from bipedalwalker.utils import utils
 import progressbar
 import logging
@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import math
 
 
-EPISODES = 10000
-MAX_TIMESTEPS = 1600  # It is 2000 for hardcore..
+EPISODES = 100000
+MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
 
 
 class CACLAmodel:
@@ -21,19 +21,21 @@ class CACLAmodel:
         self.replay_buffer = utils.Memory(4000)
         self.action_space_low = action_min
         self.action_space_high = action_max
-        self.stateRMS = utils.obsRunningMeanStd(state_size)
+        self.newNormalizer = utils.newNormalizer(state_size)
         # self.tdehistory = np.zeros(1)  # TODO: delete, just to plot tde evolution
         # HyperParams
         self.gamma = 0.99  # Discount rate
-        # self.critic_lr = 1e-3
-        # self.actor_lr = 1e-4
-        self.critic_lr = 0.1
-        self.actor_lr = 0.1
-        self.critic_lr_decay = 1e-06
-        self.actor_lr_decay = 1e-06
+        self.critic_lr = 1e-3
+        self.actor_lr = 1e-4
+        self.critic_lr_decay = 0
+        self.actor_lr_decay = 0
+        # self.critic_lr = 0.1
+        # self.actor_lr = 0.1
+        # self.critic_lr_decay = 1e-06
+        # self.actor_lr_decay = 1e-06
         self.sigma = 1.0
         self.sigma_min = 0.1
-        self.sigma_decay = 0.9995
+        self.sigma_decay = 0.9999
         self.batch_size = 32
         self.n_iter = 100
         # Build NN
@@ -55,20 +57,23 @@ class CACLAmodel:
 
     def _build_critic_model(self):  # Neural Net for CACLA learning Model - critic
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='sigmoid'))
-        # model.add(Dense(300, activation='relu'))
-        model.add(Dense(1, activation='linear'))  # Returns the Value for best policy
-        sgd = SGD(lr=self.critic_lr, momentum=0.8, decay=self.critic_lr_decay)
-        model.compile(loss='mse', optimizer=sgd)
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
+        model.add(Dense(1, activation='linear'))
+        # model.add(Dense(1, activation='tanh'))  # TODO: probar con esto..
+        # optim = SGD(lr=self.critic_lr, momentum=0.8, decay=self.critic_lr_decay)
+        optim = Adam(lr=self.critic_lr)
+        model.compile(loss='mse', optimizer=optim)
         return model
 
     def _build_actor_model(self):  # Neural Net for CACLA learning Model - actor
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size, activation='sigmoid'))
-        # model.add(Dense(300, activation='relu'))
+        model.add(Dense(400, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(300, activation='relu'))
         model.add(Dense(self.action_size, activation='tanh'))
-        sgd = SGD(lr=self.actor_lr, momentum=0.8, decay=self.actor_lr_decay)
-        model.compile(loss='mse', optimizer=sgd)
+        # sgd = SGD(lr=self.actor_lr, momentum=0.8, decay=self.actor_lr_decay)
+        optim = Adam(lr=self.actor_lr)
+        model.compile(loss='mse', optimizer=optim)
         return model
 
     def exploration(self, state, action_space):  # SPG-OffGE - offline Gaussian exploration
@@ -83,8 +88,8 @@ class CACLAmodel:
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
 
             # Normalize states
-            st = utils.normalize_batch(state, self.stateRMS)
-            st1 = utils.normalize_batch(next_state, self.stateRMS)
+            st = self.newNormalizer.normalize_batch(state)
+            st1 = self.newNormalizer.normalize_batch(next_state)
             rt = np.reshape(reward, (self.batch_size, 1))
 
             # Assign target for trainings. Substitute when done is True
@@ -101,8 +106,8 @@ class CACLAmodel:
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
 
             # Normalize states
-            st = utils.normalize_batch(state, self.stateRMS)
-            st1 = utils.normalize_batch(next_state, self.stateRMS)
+            st = self.newNormalizer.normalize_batch(state)
+            st1 = self.newNormalizer.normalize_batch(next_state)
             rt = np.reshape(reward, (self.batch_size, 1))
 
             # Get TDE and select only indexes with positive TDE
@@ -160,16 +165,17 @@ if __name__ == "__main__":
     avg_reward = 0
     ep_reward = 0
 
-    # Train the RMS a bit before start normalizing
-    for i in range(20):
+    # Train newNormalizer a bit before start normalizing
+    state = env.reset()
+    model.newNormalizer.setMinMax(state)
+    for i in range(50):
         state = env.reset()
         done = False
         while not done:
-            model.stateRMS.update(state, state_size)
+            model.newNormalizer.update(state)
             next_state, reward, done, _ = env.step(env.action_space.sample())
             state = next_state
-            # if done:
-            #     model.stateRMS.print()
+
 
     # TODO: delete, plotting tde
     # fig = plt.figure()
@@ -177,24 +183,19 @@ if __name__ == "__main__":
 
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
-        finishLine = False
         for t in range(MAX_TIMESTEPS):
             # env.render()
 
             # Updating running mean and deviation for the state vector.
-            model.stateRMS.update(state, state_size)
+            model.newNormalizer.update(state)
 
             # Performing an action.
-            norm_state = utils.normalize(state, model.stateRMS)
+            norm_state = model.newNormalizer.normalize(state)
             actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
             next_state, reward, done, _ = env.step(actions)
 
             # Measurements of progress.
             posX = env.env.hull.position.x
-            x_vel = state[2]
-            finishLine = ((reward > 200.0) or (posX > 20))
-            if finishLine:
-                logging.warning("Hallelujah! reward: {}, posX: {}".format(reward, posX))
 
             # Save values to buffer
             model.replay_buffer.remember(state, actions, reward, next_state, done)
@@ -234,3 +235,4 @@ if __name__ == "__main__":
 
         ep_reward = 0
         model.save(critic_filename, actor_filename)
+

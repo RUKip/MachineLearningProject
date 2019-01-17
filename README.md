@@ -12,7 +12,7 @@ pip install -r requirements.txt
 Source virtual environment, and export the PATH to our module. 
 ```
 source myenv/bin/activate
-export PYTHONPATH="$PYTHONPATH:/path_to_repo/bipedalwalker"
+export PYTHONPATH="$PYTHONPATH:/<path_to_main_folder>"
 python cacla_final.py
 ```
 
