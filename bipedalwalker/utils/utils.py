@@ -1,6 +1,7 @@
 import numpy as np
 from collections import deque
 import math
+import re
 
 
 class Memory:
@@ -34,6 +35,27 @@ class Memory:
         self.next_states.clear()
         self.done.clear()
 
+class ReadInRewards:
+	def __init__(self):
+		self.avg_rewards = []
+		self.episode_rewards = []
+	
+	def read(self, location):
+		f= open(location,"r")
+		text= f.read()
+		p_episode_rewards = re.compile("ep_reward\: ([0-9\.]+)")
+		self.episode_rewards = p_episode_rewards.findall(text)
+		for episode_reward in self.episode_rewards:
+			episode_reward.replace("ep_reward: ", "")
+			
+		p_average_rewards = re.compile("avg_reward\: ([0-9\.]+)")
+		self.average_rewards = p_average_rewards.findall(text)
+		for average_reward in self.average_rewards:
+			average_reward.replace("avg_reward: ", "")
+			
+		self.episode_rewards = [float(i) for i in self.episode_rewards]
+		self.average_rewards = [float(i) for i in self.average_rewards]
+		
 
 class RunningMeanStd:
     # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_Online_algorithm
