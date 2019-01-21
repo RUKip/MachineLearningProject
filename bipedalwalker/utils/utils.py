@@ -164,6 +164,13 @@ class newNormalizer:
     def setMinMax(self, state):
         self.maxValues = np.copy(state)
         self.minValues = np.copy(state)
+        #TODO: put load here
+        f = open("latest_normalization_values.txt","r")
+        if f.mode == 'r':
+            data = f.read()
+            minMax = data.split(":")
+            self.minValues = np.asarray(minMax[0].split())
+            self.maxValues = np.asarray(minMax[1].split())
 
     def update(self, values):
         compMax = np.greater(values, self.maxValues)
@@ -172,6 +179,9 @@ class newNormalizer:
         compMin = np.less(values, self.minValues)
         idxMin = np.where(compMin==True)
         np.put(self.minValues, idxMin, values[idxMin])
+        f= open("latest_normalization_values.txt","w+")
+        f.write(''.join(" " + str(e) for e in self.minValues) + ":" + ''.join(" " + str(e) for e in self.maxValues))
+        f.close()
 
     def normalize(self, values):
         normVal = 2*(values - self.minValues) / (self.maxValues - self.minValues) - 1

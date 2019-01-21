@@ -33,7 +33,7 @@ class CACLAmodel:
         # self.actor_lr = 0.1
         # self.critic_lr_decay = 1e-06
         # self.actor_lr_decay = 1e-06
-        self.sigma = 1.0
+        self.sigma = 0.4
         self.sigma_min = 0.1
         self.sigma_decay = 0.9995
         self.batch_size = 32
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     msg = utils.print_hyperparam(paramList, model.get_hyper_params())
     logging.info(msg)
 
-    # model.load(critic_filename, actor_filename)
+    model.load(critic_filename, actor_filename)
     # model.sigma = 0.0
 
     avg_reward = 0
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         for t in range(MAX_TIMESTEPS):
-            # env.render()
+            env.render()
 
             # Updating running mean and deviation for the state vector.
             model.newNormalizer.update(state)
