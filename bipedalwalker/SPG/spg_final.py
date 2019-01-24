@@ -8,8 +8,7 @@ import logging
 from bipedalwalker.utils import utils
 import math
 
-
-EPISODES = 10000
+EPISODES = 100000
 MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
 
 
@@ -85,42 +84,48 @@ class spgModel:
         for _ in range(self.n_iter):
             # Sample n=batch_size experiences from buffer
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
-            for i in range(self.batch_size):
-                # Normalize states
-                st = np.reshape(self.newNormalizer.normalize(state[i]), (1, self.state_size))
-                st1 = np.reshape(self.newNormalizer.normalize(next_state[i]), (1, self.state_size))
-                rt = reward[i]
 
-                pi_st = self.actor_model.predict(st)
-                pi_st1 = self.actor_model.predict(st1)
-                st_pit = np.hstack((st, pi_st))
-                # Assign target for trainings. Substitute when done is True
-                if done[i]:
-                    target_critic = np.reshape(rt, (1, 1))
-                else:
-                    target_critic = rt + self.gamma * self.get_Q(st1, pi_st1)
-                self.critic_model.fit(st_pit, target_critic, epochs=1, verbose=0)
+            # Normalize states
+            st = self.newNormalizer.normalize_batch(state)
+            st1 = self.newNormalizer.normalize_batch(next_state)
+            rt = np.reshape(reward, (self.batch_size, 1))
+
+            pi_st = self.actor_model.predict(st)
+            pi_st1 = self.actor_model.predict(st1)
+            st_pit = np.hstack((st, pi_st))
+
+            # Assign target for trainings. Substitute when done is True
+            target_critic = rt + self.gamma * self.get_Q(st1, pi_st1)
+            # print("target: {}".format(target))  # TODO:delete, just for debug
+            idx = np.where(done == True)
+            np.put(target_critic, idx, rt[idx])
+
+            self.critic_model.fit(st_pit, target_critic, epochs=1, verbose=0)
 
     def train_actor(self):
         for _ in range(self.n_iter):
+            # Sample n=batch_size experiences from buffer
             state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
-            for i in range(self.batch_size):
-                s = np.reshape(self.newNormalizer.normalize(state[i]), (1, self.state_size))
-                a = np.reshape(action[i], (1, self.action_size))
-                pi_s = self.actor_model.predict(s)
-                best = pi_s
-                if self.get_Q(s, a) > self.get_Q(s, pi_s):
-                    best = a
-                for _ in range(self.n_sampled_actions):
-                    sampled = self.apply_gaussian(best)
-                    if self.get_Q(s, sampled) > self.get_Q(s, best):
-                        best = sampled
-                if self.get_Q(s, best) > self.get_Q(s, pi_s):
-                    target = best
-                    self.actor_model.fit(s, target, epochs=1, verbose=0)
+
+            # Normalize state
+            s = self.newNormalizer.normalize_batch(state)
+            a = action
+            pi_s = self.actor_model.predict(s) #  Policy action values
+            best = pi_s
+            QcurrentPolicy = self.get_Q(s, pi_s)
+            idxGreater = np.where(self.get_Q(s, a) > QcurrentPolicy)[0]
+            best[idxGreater] = a[idxGreater]
+
+            # Sample new actions around policy
+            for _ in range(self.n_sampled_actions):
+                sampled = self.apply_gaussian(best)
+                idxGreater = np.where(self.get_Q(s, sampled) > self.get_Q(s, best))[0]
+                best[idxGreater] = sampled[idxGreater]
+            target = best
+            self.actor_model.fit(s, target, epochs=1, verbose=0)
 
     def apply_gaussian(self, best_action):
-        best_action = best_action + np.random.normal(0, self.sigma, size=self.action_size)
+        best_action = best_action + np.random.normal(0, self.sigma, size=np.shape(best_action))
         return best_action.clip(self.action_space_low, self.action_space_high)
 
     def get_Q(self, state, actions):
@@ -138,96 +143,95 @@ class spgModel:
 
 if __name__ == "__main__":
 
-    # logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(message)s')
-    env = gym.make('BipedalWalker-v2')
-    state_size = env.observation_space.shape[0]
-    action_size = env.action_space.shape[0]
-    model = spgModel(state_size, action_size, env.action_space.low, env.action_space.high)
-    critic_filename = "BipedalWalker-critic.h5"
-    actor_filename = "BipedalWalker-actor.h5"
+    try:
+        logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(message)s')
+        env = gym.make('BipedalWalker-v2')
+        state_size = env.observation_space.shape[0]
+        action_size = env.action_space.shape[0]
+        model = spgModel(state_size, action_size, env.action_space.low, env.action_space.high)
+        critic_filename = "BipedalWalker-critic.h5"
+        actor_filename = "BipedalWalker-actor.h5"
 
-    logging.info("Starting exercise: actor_filename: {}, critic_filename: {}\n".format(actor_filename, critic_filename))
-    paramList = ["gamma",
-                 "critic_lr",
-                 "actor_lr",
-                 "critic_lr_decay",
-                 "actor_lr_decay",
-                 "sigma",
-                 "sigma_min",
-                 "sigma_decay",
-                 "batch_size",
-                 "n_iter",
-                 "n_SampledActions"]
+        logging.info("Starting exercise: actor_filename: {}, critic_filename: {}\n".format(actor_filename, critic_filename))
+        paramList = ["gamma",
+                     "critic_lr",
+                     "actor_lr",
+                     "critic_lr_decay",
+                     "actor_lr_decay",
+                     "sigma",
+                     "sigma_min",
+                     "sigma_decay",
+                     "batch_size",
+                     "n_iter",
+                     "n_SampledActions"]
 
-    msg = utils.print_hyperparam(paramList, model.get_hyper_params())
-    logging.info(msg)
+        msg = utils.print_hyperparam(paramList, model.get_hyper_params())
+        logging.info(msg)
 
-    # model.load(critic_filename, actor_filename)
-    # model.sigma = 0.0
+        # model.load(critic_filename, actor_filename)
+        # model.sigma = 0.0
 
-    avg_reward = 0
-    ep_reward = 0
-
-    # Train newNormalizer a bit before start normalizing
-    state = env.reset()
-    model.newNormalizer.setMinMax(state)
-    for i in range(50):
-        state = env.reset()
-        done = False
-        while not done:
-            model.newNormalizer.update(state)
-            next_state, reward, done, _ = env.step(env.action_space.sample())
-            state = next_state
-
-
-    # Main loop for episodes.
-    for e in progressbar.progressbar(range(EPISODES)):
-        state = env.reset()
-        for t in range(MAX_TIMESTEPS):
-            # env.render()
-
-            # Updating running mean and deviation for the state vector.
-            model.newNormalizer.update(state)
-
-            # Performing an action.
-            norm_state = model.newNormalizer.normalize(state)
-            actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
-            next_state, reward, done, _ = env.step(actions)
-
-            # Measurements of progress.
-            posX = env.env.hull.position.x
-
-            # Save values to buffer
-            model.replay_buffer.remember(state, actions, reward, next_state, done)
-            state = next_state
-
-            avg_reward += reward
-            ep_reward += reward
-
-            if done:
-                # Train model.
-                model.train_critic()
-                model.train_actor()
-
-                # Output variables to log.
-                paramList = ["latest_r",
-                             "ep_reward",
-                             "avg_reward",
-                             "sigma",
-                             "posX",
-                             "t"]
-                params = (e+1, EPISODES, reward, ep_reward, avg_reward, model.sigma, posX, t)
-                msg = utils.print_episode(paramList, params)
-                logging.debug(msg)
-
-                # Sigma decay.
-                if model.sigma > model.sigma_min:
-                    model.sigma *= model.sigma_decay
-                else:
-                    model.sigma = model.sigma_min
-
-                break
-
+        avg_reward = 0
         ep_reward = 0
-        model.save(critic_filename, actor_filename)
+
+        # Train newNormalizer a bit before start normalizing
+        state = env.reset()
+        minmaxValues = "./../savedData/minmaxVal.csv"
+        model.newNormalizer.setMinMax(state, minmaxValues)
+
+        for e in progressbar.progressbar(range(EPISODES)):
+            state = env.reset()
+            for t in range(MAX_TIMESTEPS):
+                # env.render()
+
+                # Updating running mean and deviation for the state vector.
+                model.newNormalizer.update(state)
+
+                # Performing an action.
+                norm_state = model.newNormalizer.normalize(state)
+                actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
+                next_state, reward, done, _ = env.step(actions)
+
+                # Measurements of progress.
+                posX = env.env.hull.position.x
+
+                # Save values to buffer
+                model.replay_buffer.remember(state, actions, reward, next_state, done)
+                state = next_state
+
+                avg_reward += reward
+                ep_reward += reward
+
+                if done:
+                    # Train model.
+                    model.train_critic()
+                    model.train_actor()
+
+                    # Output variables to log.
+                    paramList = ["latest_r",
+                                 "ep_reward",
+                                 "avg_reward",
+                                 "sigma",
+                                 "posX",
+                                 "t"]
+                    params = (e+1, EPISODES, reward, ep_reward, avg_reward, model.sigma, posX, t)
+                    msg = utils.print_episode(paramList, params)
+                    logging.debug(msg)
+
+                    # Sigma decay.
+                    if model.sigma > model.sigma_min:
+                        model.sigma *= model.sigma_decay
+                    else:
+                        model.sigma = model.sigma_min
+
+                    break
+
+            ep_reward = 0
+            model.save(critic_filename, actor_filename)
+
+    except:
+        # minMax values will be saved when we end the exercise
+        model.newNormalizer.saveMinMax(minmaxValues)
+
+    # minMax values will be saved if it reaches max EPISODES
+    model.newNormalizer.saveMinMax(minmaxValues)

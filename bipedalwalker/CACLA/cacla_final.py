@@ -8,7 +8,7 @@ import progressbar
 import logging
 import matplotlib.pyplot as plt
 import math
-
+import sys
 
 EPISODES = 100000
 MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
@@ -137,102 +137,93 @@ class CACLAmodel:
 
 if __name__ == "__main__":
 
-    logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(message)s')
-    env = gym.make('BipedalWalker-v2')
-    state_size = env.observation_space.shape[0]
-    action_size = env.action_space.shape[0]
-    model = CACLAmodel(state_size, action_size, env.action_space.low, env.action_space.high)
-    critic_filename = "BipedalWalker-critic.h5"
-    actor_filename = "BipedalWalker-actor.h5"
+    try:
+        logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(message)s')
+        env = gym.make('BipedalWalker-v2')
+        state_size = env.observation_space.shape[0]
+        action_size = env.action_space.shape[0]
+        model = CACLAmodel(state_size, action_size, env.action_space.low, env.action_space.high)
+        critic_filename = "BipedalWalker-critic.h5"
+        actor_filename = "BipedalWalker-actor.h5"
 
-    logging.info("Starting exercise: actor_filename: {}, critic_filename: {}\n".format(actor_filename, critic_filename))
-    paramList = ["gamma",
-                 "critic_lr",
-                 "actor_lr",
-                 "critic_lr_decay",
-                 "actor_lr_decay",
-                 "sigma",
-                 "sigma_min",
-                 "sigma_decay",
-                 "batch_size",
-                 "n_iter"]
-    msg = utils.print_hyperparam(paramList, model.get_hyper_params())
-    logging.info(msg)
+        logging.info("Starting exercise: actor_filename: {}, critic_filename: {}\n".format(actor_filename, critic_filename))
+        paramList = ["gamma",
+                     "critic_lr",
+                     "actor_lr",
+                     "critic_lr_decay",
+                     "actor_lr_decay",
+                     "sigma",
+                     "sigma_min",
+                     "sigma_decay",
+                     "batch_size",
+                     "n_iter"]
+        msg = utils.print_hyperparam(paramList, model.get_hyper_params())
+        logging.info(msg)
 
-    # model.load(critic_filename, actor_filename)
-    # model.sigma = 0.0
+        # model.load(critic_filename, actor_filename)
+        # model.sigma = 0.0
 
-    avg_reward = 0
-    ep_reward = 0
-
-    # Train newNormalizer a bit before start normalizing
-    state = env.reset()
-    model.newNormalizer.setMinMax(state)
-    for i in range(50):
-        state = env.reset()
-        done = False
-        while not done:
-            model.newNormalizer.update(state)
-            next_state, reward, done, _ = env.step(env.action_space.sample())
-            state = next_state
-
-
-    # TODO: delete, plotting tde
-    # fig = plt.figure()
-    # plt.show(block=False)
-
-    for e in progressbar.progressbar(range(EPISODES)):
-        state = env.reset()
-        for t in range(MAX_TIMESTEPS):
-            # env.render()
-
-            # Updating running mean and deviation for the state vector.
-            model.newNormalizer.update(state)
-
-            # Performing an action.
-            norm_state = model.newNormalizer.normalize(state)
-            actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
-            next_state, reward, done, _ = env.step(actions)
-
-            # Measurements of progress.
-            posX = env.env.hull.position.x
-
-            # Save values to buffer
-            model.replay_buffer.remember(state, actions, reward, next_state, done)
-            state = next_state
-
-            avg_reward += reward
-            ep_reward += reward
-
-
-            if done:
-                # plt.gcf().clf()
-                # plt.plot(model.tdehistory)
-                # plt.pause(0.01)
-
-                # Train model.
-                model.train_critic()
-                model.train_actor()
-
-                # Output variables to log.
-                paramList = ["latest_r",
-                             "ep_reward",
-                             "avg_reward",
-                             "sigma",
-                             "posX",
-                             "t"]
-                params = (e+1, EPISODES, reward, ep_reward, avg_reward, model.sigma, posX, t)
-                msg = utils.print_episode(paramList, params)
-                logging.debug(msg)
-
-                # Sigma decay.
-                if model.sigma > model.sigma_min:
-                    model.sigma *= model.sigma_decay
-                else:
-                    model.sigma = model.sigma_min
-
-                break
-
+        avg_reward = 0
         ep_reward = 0
-        model.save(critic_filename, actor_filename)
 
+        # Train newNormalizer a bit before start normalizing
+        state = env.reset()
+        minmaxValues = "./../savedData/minmaxVal.csv"
+        model.newNormalizer.setMinMax(state, minmaxValues)
+
+        for e in progressbar.progressbar(range(EPISODES)):
+            state = env.reset()
+            for t in range(MAX_TIMESTEPS):
+                # env.render()
+
+                # Updating running mean and deviation for the state vector.
+                model.newNormalizer.update(state)
+
+                # Performing an action.
+                norm_state = model.newNormalizer.normalize(state)
+                actions = model.exploration(np.reshape(norm_state, (1, state_size)), action_size)
+                next_state, reward, done, _ = env.step(actions)
+
+                # Measurements of progress.
+                posX = env.env.hull.position.x
+
+                # Save values to buffer
+                model.replay_buffer.remember(state, actions, reward, next_state, done)
+                state = next_state
+
+                avg_reward += reward
+                ep_reward += reward
+
+                if done:
+                    # Train model.
+                    model.train_critic()
+                    model.train_actor()
+
+                    # Output variables to log.
+                    paramList = ["latest_r",
+                                 "ep_reward",
+                                 "avg_reward",
+                                 "sigma",
+                                 "posX",
+                                 "t"]
+                    params = (e+1, EPISODES, reward, ep_reward, avg_reward, model.sigma, posX, t)
+                    msg = utils.print_episode(paramList, params)
+                    logging.debug(msg)
+
+                    # Sigma decay.
+                    if model.sigma > model.sigma_min:
+                        model.sigma *= model.sigma_decay
+                    else:
+                        model.sigma = model.sigma_min
+
+                    break
+
+            ep_reward = 0
+            model.save(critic_filename, actor_filename)
+
+    except:
+        # minMax values will be saved when we end the exercise
+        model.newNormalizer.saveMinMax(minmaxValues)
+
+    # minMax values will be saved if it reaches max EPISODES
+    model.newNormalizer.saveMinMax(minmaxValues)

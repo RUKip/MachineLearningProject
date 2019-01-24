@@ -1,6 +1,8 @@
 import numpy as np
 from collections import deque
 import math
+import pandas as pd
+import os
 
 
 class Memory:
@@ -139,9 +141,17 @@ class newNormalizer:
         self.maxValues = np.zeros((1, size))
         self.minValues = np.zeros((1, size))
 
-    def setMinMax(self, state):
+    def setMinMax(self, state, filename):
         self.maxValues = np.copy(state)
         self.minValues = np.copy(state)
+        if os.path.isfile(filename):
+            values = pd.read_csv(filename)
+            self.minValues = values.values[0]
+            self.maxValues = values.values[1]
+
+    def saveMinMax(self, filename):
+        values = pd.DataFrame(np.vstack((self.minValues, self.maxValues)))
+        values.to_csv(filename, index=False)
 
     def update(self, values):
         compMax = np.greater(values, self.maxValues)
