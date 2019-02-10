@@ -29,10 +29,6 @@ class CACLAmodel:
         self.actor_lr = 1e-4
         self.critic_lr_decay = 0
         self.actor_lr_decay = 0
-        # self.critic_lr = 0.1
-        # self.actor_lr = 0.1
-        # self.critic_lr_decay = 1e-06
-        # self.actor_lr_decay = 1e-06
         self.sigma = 1.0
         self.sigma_min = 0.1
         self.sigma_decay = 0.9995
@@ -60,7 +56,6 @@ class CACLAmodel:
         model.add(Dense(400, input_dim=self.state_size, activation='relu'))
         model.add(Dense(300, activation='relu'))
         model.add(Dense(1, activation='linear'))
-        # model.add(Dense(1, activation='tanh'))  # TODO: probar con esto..
         # optim = SGD(lr=self.critic_lr, momentum=0.8, decay=self.critic_lr_decay)
         optim = Adam(lr=self.critic_lr)
         model.compile(loss='mse', optimizer=optim)
@@ -165,6 +160,8 @@ if __name__ == "__main__":
 
         avg_reward = 0
         ep_reward = 0
+        ep_reward_arr = []
+        posX_arr = []
 
         # Train newNormalizer a bit before start normalizing
         state = env.reset()
@@ -218,12 +215,16 @@ if __name__ == "__main__":
 
                     break
 
+            ep_reward_arr.append(ep_reward)
+            posX_arr.append(posX)
             ep_reward = 0
             model.save(critic_filename, actor_filename)
 
     except:
-        # minMax values will be saved when we end the exercise
-        model.newNormalizer.saveMinMax(minmaxValues)
+        print("Execution interrupted")
 
     # minMax values will be saved if it reaches max EPISODES
     model.newNormalizer.saveMinMax(minmaxValues)
+    utils.saveToCSV(ep_reward_arr, "ep_reward_arr")
+    utils.saveToCSV(posX_arr, "posX_arr")
+    print("Values saved to CSV")

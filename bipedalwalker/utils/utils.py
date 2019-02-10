@@ -173,6 +173,11 @@ class newNormalizer:
         return normVal
 
 
+def saveToCSV(val, filename):
+    values = pd.DataFrame(val)
+    values.to_csv(filename, index=False)
+
+
 def print_hyperparam(paramList, hyperparams):
     message = "    HYPERPARAMETERS    \n" \
               "-----------------------\n"

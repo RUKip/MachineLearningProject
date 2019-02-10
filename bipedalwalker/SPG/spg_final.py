@@ -22,17 +22,13 @@ class spgModel:
         self.newNormalizer = utils.newNormalizer(state_size)
         # HyperParams
         self.gamma = 0.99  # Discount rate
-        self.critic_lr = 1e-3
-        self.actor_lr = 1e-4
+        self.critic_lr = 5e-4
+        self.actor_lr = 5e-4
         self.critic_lr_decay = 0
         self.actor_lr_decay = 0
-        # self.critic_lr = 0.1
-        # self.actor_lr = 0.1
-        # self.critic_lr_decay = 1e-06
-        # self.actor_lr_decay = 1e-06
         self.sigma = 1.0
         self.sigma_min = 0.1
-        self.sigma_decay = 0.9995
+        self.sigma_decay = 0.9999
         self.batch_size = 32
         self.n_iter = 100
         self.n_sampled_actions = 3
@@ -173,6 +169,8 @@ if __name__ == "__main__":
 
         avg_reward = 0
         ep_reward = 0
+        ep_reward_arr = []
+        posX_arr = []
 
         # Train newNormalizer a bit before start normalizing
         state = env.reset()
@@ -226,12 +224,16 @@ if __name__ == "__main__":
 
                     break
 
+            ep_reward_arr.append(ep_reward)
+            posX_arr.append(posX)
             ep_reward = 0
             model.save(critic_filename, actor_filename)
 
     except:
-        # minMax values will be saved when we end the exercise
-        model.newNormalizer.saveMinMax(minmaxValues)
+        print("Execution interrupted")
 
     # minMax values will be saved if it reaches max EPISODES
     model.newNormalizer.saveMinMax(minmaxValues)
+    utils.saveToCSV(ep_reward_arr, "ep_reward_arr")
+    utils.saveToCSV(posX_arr, "posX_arr")
+    print("Values saved to CSV")
