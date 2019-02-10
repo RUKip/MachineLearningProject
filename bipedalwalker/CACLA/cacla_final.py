@@ -3,12 +3,9 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import SGD, Adam
-from bipedalwalker.utils import utils
 import progressbar
 import logging
-import matplotlib.pyplot as plt
-import math
-import sys
+from bipedalwalker.utils import utils
 
 EPISODES = 100000
 MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
@@ -22,7 +19,6 @@ class CACLAmodel:
         self.action_space_low = action_min
         self.action_space_high = action_max
         self.newNormalizer = utils.newNormalizer(state_size)
-        # self.tdehistory = np.zeros(1)  # TODO: delete, just to plot tde evolution
         # HyperParams
         self.gamma = 0.99  # Discount rate
         self.critic_lr = 1e-3
@@ -225,6 +221,6 @@ if __name__ == "__main__":
 
     # minMax values will be saved if it reaches max EPISODES
     model.newNormalizer.saveMinMax(minmaxValues)
-    utils.saveToCSV(ep_reward_arr, "ep_reward_arr")
-    utils.saveToCSV(posX_arr, "posX_arr")
+    utils.saveToCSV(ep_reward_arr, "ep_reward_arr.csv")
+    utils.saveToCSV(posX_arr, "posX_arr.csv")
     print("Values saved to CSV")

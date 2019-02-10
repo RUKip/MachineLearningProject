@@ -6,7 +6,6 @@ from keras.optimizers import SGD, Adam
 import progressbar
 import logging
 from bipedalwalker.utils import utils
-import math
 
 EPISODES = 100000
 MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
@@ -234,6 +233,6 @@ if __name__ == "__main__":
 
     # minMax values will be saved if it reaches max EPISODES
     model.newNormalizer.saveMinMax(minmaxValues)
-    utils.saveToCSV(ep_reward_arr, "ep_reward_arr")
-    utils.saveToCSV(posX_arr, "posX_arr")
+    utils.saveToCSV(ep_reward_arr, "ep_reward_arr.csv")
+    utils.saveToCSV(posX_arr, "posX_arr.csv")
     print("Values saved to CSV")

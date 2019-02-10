@@ -178,6 +178,11 @@ def saveToCSV(val, filename):
     values.to_csv(filename, index=False)
 
 
+def loadFromCSV(filename):
+    values = pd.read_csv(filename)
+    return values
+
+
 def print_hyperparam(paramList, hyperparams):
     message = "    HYPERPARAMETERS    \n" \
               "-----------------------\n"
