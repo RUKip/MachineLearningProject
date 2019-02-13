@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 
 
 # # CACLA training
-# ep_reward_str = "CACLA/ep_reward_arr.csv"
-# posX_str = "CACLA/posX_arr.csv"
-# t_str = "CACLA/t_arr.csv"
-#
+# ep_reward_str = "../gcloud-data/CACLA/ep_reward_arr.csv"
+# posX_str = "../gcloud-data/CACLA/posX_arr.csv"
+
 # # SPG training
 # ep_reward_str = "SPG/ep_reward_arr.csv"
 # posX_str = "SPG/posX_arr.csv"

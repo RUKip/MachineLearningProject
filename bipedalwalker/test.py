@@ -51,7 +51,7 @@ def test(model, ep_reward_str, posX_str, t_str):
     for e in progressbar.progressbar(range(EPISODES)):
         state = env.reset()
         for t in range(MAX_TIMESTEPS):
-            # env.render()  # Uncomment to see the robot
+            env.render()  # Uncomment to see the robot
 
             # Updating running mean and deviation for the state vector.
             model.newNormalizer.update(state)
