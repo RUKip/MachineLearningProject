@@ -7,7 +7,7 @@ import progressbar
 import logging
 from bipedalwalker.utils import utils
 
-EPISODES = 100000
+EPISODES = 20000
 MAX_TIMESTEPS = 2000  # It is 2000 for hardcore..
 
 
