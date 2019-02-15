@@ -1,4 +1,4 @@
-# Comparing PPO and CACLA machine learning algorithm
+# Comparing SPG and CACLA Reinforcement learning algorithm
 
 ## Installation
 Create virtualenv in base repo directory:
