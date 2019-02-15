@@ -1,5 +1,7 @@
 # Comparing SPG and CACLA Reinforcement learning algorithm
 
+![]("Peek 2019-02-15 22-05.gif")
+
 ## Installation
 Create virtualenv in base repo directory:
 ```
@@ -11,25 +13,25 @@ export PYTHONPATH="$PYTHONPATH:/<path_to_main_folder>"
 ```
 
 ## Training 
-###CACLA
+CACLA
 ```
 cd bipedalwalker/CACLA/
 python cacla_final.py
 ```
-###SPG
+SPG
 ```
 cd bipedalwalker/SPG/
 python spg_final.py
 ```
 ## Testing
 Copy trained weights and minmaxvalues, then run test file.
-###CACLA
+CACLA
 ```
 cp gcloud-data/CACLA/BipedalWalker-* bipedalwalker/CACLA/
 cp gcloud-data/CACLA/minmaxVal.csv bipedalwalker/savedData/
 python test.py
 ```
-###SPG
+SPG
 ```
 cp gcloud-data/SPG/BipedalWalker-* bipedalwalker/SPG/
 cp gcloud-data/SPG/minmaxVal.csv bipedalwalker/savedData/
