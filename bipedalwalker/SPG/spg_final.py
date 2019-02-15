@@ -27,7 +27,7 @@ class spgModel:
         self.actor_lr_decay = 0
         self.sigma = 1.0
         self.sigma_min = 0.1
-        self.sigma_decay = 0.9999
+        self.sigma_decay = 0.9998
         self.batch_size = 32
         self.n_iter = 100
         self.n_sampled_actions = 3
