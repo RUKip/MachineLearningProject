@@ -1,6 +1,6 @@
 # Comparing SPG and CACLA Reinforcement learning algorithm
 
-![]("Peek 2019-02-15 22-05.gif")
+![](walker.gif)
 
 ## Installation
 Create virtualenv in base repo directory:
